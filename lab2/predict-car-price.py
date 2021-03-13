@@ -44,10 +44,11 @@ class CarPrice:
       del df_test['msrp']
       return y_train,df_train,y_val,df_val,y_val_orig,y_test,df_test,y_test_orig
       
-    def linear_regression(self, X, y):
+    def linear_regression(self, X, y,r=1):
          ones = np.ones(X.shape[0])
          X = np.column_stack([ones, X])
          XTX = X.T.dot(X)
+         XTX = XTX+(r*np.eye(XTX.shape[0]))
          XTX_inv = np.linalg.inv(XTX)
          w = XTX_inv.dot(X.T).dot(y)  
          return w[0], w[1:]
@@ -58,7 +59,7 @@ class CarPrice:
       df_num = df_num.fillna(0)
       X = df_num.values
       return X
-    def rmse(y, y_pred):
+    def rmse(self,y, y_pred):
      error = y_pred - y
      mse = (error ** 2).mean()
      return np.sqrt(mse)
@@ -73,20 +74,22 @@ if __name__ == "__main__":
     carprice= CarPrice()
     carprice.trim()
     y_train,df_train,y_val,df_val,y_val_orig,y_test,df_test,y_test_orig=carprice.validate()
-    #base = ['engine_cylinders','number_of_doors','highway_mpg','city_mpg','popularity']
+
     base = ['engine_hp', 'engine_cylinders', 'highway_mpg', 'city_mpg', 'popularity']
     X_train =carprice.prepare_X(base,df_train)
-    w_0, w = carprice.linear_regression(X_train, y_train)
-    y_pred = w_0 + X_train.dot(w)
-    #print(y_pred)
-    #print(np.exp(y_pred))
-    X_val = carprice.prepare_X(base,df_val)
-    #w_0, w = carprice.linear_regression(X_val, y_val)
-    y_val_pred = w_0 + X_val.dot(w)
-    #print(y_val_pred)
-    print('Validation Prediction data==============')
-    carprice.getPredictedPrices(df_val,y_val_orig,y_val_pred)
+    
+    for r in [0.00001,0.0001,0.001,0.01,0.1,1,10]:
+     w_0, w = carprice.linear_regression(X_train, y_train,r)
+     y_pred = w_0 + X_train.dot(w)
+     X_val = carprice.prepare_X(base,df_val)
+     y_val_pred = w_0 + X_val.dot(w)
+     print(r,carprice.rmse(y_val,y_val_pred))
+   
+    # Got minimum rmse at r = 1 for validation data
+    w_0, w = carprice.linear_regression(X_train, y_train) 
+    #Test dataset
     X_test=carprice.prepare_X(base,df_test)
     y_test_pred=w_0 + X_test.dot(w)
-    print('Test Prediction data==============')
+   
+   
     carprice.getPredictedPrices(df_test,y_test_orig,y_test_pred)
